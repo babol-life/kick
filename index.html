@@ -81,8 +81,8 @@ body {
   flex: 1;
   position: relative;
   background: linear-gradient(to bottom,
-    #4a9fd4 0%, #87ceeb 7%,
-    #2db54e 7%, #1e8c38 35%, #178030 100%);
+    #4a9fd4 0%, #87ceeb 11%,
+    #2db54e 11%, #1e8c38 35%, #178030 100%);
   overflow: hidden;
   touch-action: none;   /* 드래그 슛 인터랙션 유지 */
   -webkit-tap-highlight-color: transparent;
@@ -408,7 +408,7 @@ function fireShot(dx, dy, dist) {
   // ── 1. 화살표 방향으로 공 목표 지점 계산 ──────────────────────
   // 골대 안쪽 목표 Y (크로스바에서 30% 아래)
   var tY = gT + gH * 0.30;
-  var dur = (0.36 + (1-pwr)*0.18).toFixed(2);
+  var dur = (0.18 + (1-pwr)*0.34).toFixed(2); // 고파워: 0.18s(빠름), 저파워: 0.52s(느림)
 
   // 공이 골 방향(위)으로 가지 않으면 → 즉시 노 골
   if (ndy >= -0.08) {
@@ -452,7 +452,7 @@ function fireShot(dx, dy, dist) {
   var rel  = (tX - gL) / gW;   // 0~1, 골대 내 상대 위치
   var side = rel - 0.5;         // 음수=왼쪽, 양수=오른쪽
   var kd   = keeperAI(side, pwr);
-  var isGoal = checkGoal(rel, kd);
+  var isGoal = checkGoal(rel, kd, pwr);
 
   // 키퍼 이동할 위치
   // 세이브: 키퍼 센터 = 공 위치
@@ -480,22 +480,25 @@ function fireShot(dx, dy, dist) {
   setTimeout(function(){ kickResult(isGoal); }, dur*1000+80);
 }
 
-// AI: 어느 방향으로 다이브할지 결정
+// AI: 파워 낮을수록 키퍼가 방향을 정확히 읽음 (반응시간 충분)
+// 파워 높을수록 키퍼가 찍기에 가까워짐 (공이 너무 빠름)
 function keeperAI(side, pwr) {
   var r = Math.random();
-  if (pwr > 0.85) return r<0.42 ? (side<0?'left':'right') : (r<0.72?'center':(side<0?'right':'left'));
-  if (Math.abs(side) < 0.18) return r<0.52 ? 'center' : (r<0.76?'left':'right');
-  var ok=side<0?'left':'right', ng=side<0?'right':'left';
-  return r<0.50 ? ok : (r<0.75?'center':ng);
+  var ok = Math.abs(side) < 0.18 ? 'center' : (side < 0 ? 'left' : 'right');
+  // 저파워(0): 85% 정확, 고파워(1): 20% 정확
+  var correctChance = 0.85 - pwr * 0.65;
+  if (r < correctChance) return ok;
+  var wrongs = ['left','center','right'].filter(function(d){ return d !== ok; });
+  return wrongs[Math.floor(Math.random() * 2)];
 }
 
-// 골 판정: kd=AI방향, rel=공 위치(0~1)
-// 키퍼가 맞는 방향으로 갔을 때만 세이브 가능
-function checkGoal(rel, kd) {
-  if (kd==='left'   && rel < 0.33) return false;  // 세이브
-  if (kd==='right'  && rel > 0.67) return false;  // 세이브
-  if (kd==='center' && rel >= 0.33 && rel <= 0.67) return false;  // 세이브
-  return true;  // 골
+// 골 판정: 저파워일수록 키퍼 세이브 범위가 넓어짐
+function checkGoal(rel, kd, pwr) {
+  var m = 0.28 + (1 - pwr) * 0.20;  // 고파워: 0.28, 저파워: 0.48
+  if (kd === 'left'   && rel < m)            return false;
+  if (kd === 'right'  && rel > 1 - m)        return false;
+  if (kd === 'center' && rel >= 0.5-m*0.55 && rel <= 0.5+m*0.55) return false;
+  return true;
 }
 
 function showKeeperImg(id) {
