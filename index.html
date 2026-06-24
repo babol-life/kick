@@ -80,7 +80,7 @@ body {
 .field {
   flex: 1;
   position: relative;
-  background: linear-gradient(to bottom, #5ba3d4 0%, #87ceeb 42%, #1e8c38 42%, #178030 100%);
+  background: #1e8c38; /* JS resizeCvs()가 정확한 sky/grass 경계 계산 */
   overflow: hidden;
   touch-action: none;   /* 드래그 슛 인터랙션 유지 */
   -webkit-tap-highlight-color: transparent;
@@ -283,6 +283,12 @@ var fieldEl  = document.getElementById('field');
 function resizeCvs() {
   acvs.width  = fieldEl.offsetWidth;
   acvs.height = fieldEl.offsetHeight;
+  // 하늘/잔디 경계를 골대 하단에 맞게 동적 계산
+  var fr = fieldEl.getBoundingClientRect();
+  var gf = document.getElementById('goal-frame').getBoundingClientRect();
+  var pct = ((gf.bottom - fr.top) / fr.height * 100 + 2).toFixed(1);
+  fieldEl.style.background =
+    'linear-gradient(to bottom,#5ba3d4 0%,#87ceeb '+pct+'%,#1e8c38 '+pct+'%,#178030 100%)';
 }
 
 function startGame() {
