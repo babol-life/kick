@@ -80,7 +80,7 @@ body {
 .field {
   flex: 1;
   position: relative;
-  background: linear-gradient(to bottom, #5ba3d4 0%, #87ceeb 30%, #1e8c38 30%, #178030 100%);
+  background: linear-gradient(to bottom, #5ba3d4 0%, #87ceeb 42%, #1e8c38 42%, #178030 100%);
   overflow: hidden;
   touch-action: none;   /* 드래그 슛 인터랙션 유지 */
   -webkit-tap-highlight-color: transparent;
@@ -146,7 +146,7 @@ body {
 
 #ball {
   position: absolute;
-  bottom: 8%;
+  bottom: 6%;
   left: 50%;
   transform: translateX(-50%);
   font-size: 42px;
@@ -155,7 +155,6 @@ body {
   filter: drop-shadow(0 3px 4px rgba(0,0,0,0.5));
   line-height: 1;
   -webkit-tap-highlight-color: transparent;
-  padding: 10px;
 }
 
 #acvs { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5; }
@@ -169,7 +168,7 @@ body {
 #pw-fill { height:100%; width:0%; border-radius:5px;
   background:linear-gradient(90deg,#44cc44,#f5c518,#e63946); }
 
-#msg { position:absolute; bottom:14%; left:50%; transform:translateX(-50%);
+#msg { position:absolute; bottom:19%; left:50%; transform:translateX(-50%);
   font-size:16px; font-weight:900; color:#fff;
   text-shadow:1px 1px 4px #000; white-space:nowrap; pointer-events:none; z-index:6; }
 
@@ -304,8 +303,8 @@ function resetKick() {
   actx.clearRect(0,0,acvs.width,acvs.height);
 
   ballEl.style.cssText =
-    'position:absolute;bottom:8%;left:50%;transform:translateX(-50%);' +
-    'font-size:42px;cursor:pointer;z-index:10;padding:10px;' +
+    'position:absolute;bottom:6%;left:50%;transform:translateX(-50%);' +
+    'font-size:42px;cursor:pointer;z-index:10;' +
     'filter:drop-shadow(0 3px 4px rgba(0,0,0,.5));line-height:1;transition:none;opacity:1;' +
     '-webkit-tap-highlight-color:transparent;';
 
