@@ -3,18 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>승부차기</title>
+<title>골든볼 미니게임</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --mint: #2EE6B0;
+  --mint-deep: #14B894;
+  --mint-dim: #0c2f28;
+  --bg-dark: #071512;
+}
 /* iOS Safari: position:fixed on body causes white screen — use height:100% instead */
 html {
   width: 100%; height: 100%;
   overflow: hidden;
-  background: #0b180c;
+  background: var(--bg-dark);
 }
 body {
   font-family: sans-serif;
-  background: #0b180c;
+  background: var(--bg-dark);
   color: #fff;
   overflow: hidden;
   user-select: none;
@@ -29,27 +35,42 @@ body {
 #s-intro {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: radial-gradient(ellipse at 50% 55%, #1a6b2a, #0b180c 70%);
+  background: radial-gradient(ellipse at 50% 45%, var(--mint-dim), var(--bg-dark) 72%);
   display: none;           /* 기본 숨김 */
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 16px;
   text-align: center;
   padding: 30px;
   -webkit-tap-highlight-color: transparent;
+  overflow-y: auto;
 }
 #s-intro.on { display: flex; }
-.big-ball { font-size: 70px; }
-.t1 { font-size: 42px; font-weight: 900; color: #f5c518;
-  text-shadow: 3px 3px 0 #000; line-height: 1.15; }
-.badge { background: #f5c518; color: #000; font-weight: 700;
-  padding: 5px 18px; border-radius: 20px; font-size: 14px; }
-.sub { color: #a8dbb5; font-size: 14px; line-height: 1.8; }
-.btn-go { background: #f5c518; color: #000; border: none;
+.big-ball { font-size: 56px; }
+.t1 { font-size: 32px; font-weight: 900; color: var(--mint);
+  text-shadow: 3px 3px 0 #000; line-height: 1.2; }
+.t2 { font-size: 17px; font-weight: 700; color: #eafff7; line-height: 1.7; }
+.t2 b { color: var(--mint); }
+.badge { background: var(--mint); color: #042620; font-weight: 800;
+  padding: 5px 18px; border-radius: 20px; font-size: 13px; }
+.sub { color: #9be8cf; font-size: 13px; line-height: 1.8; }
+
+.nick-wrap { display:flex; flex-direction:column; gap:8px; width:100%; max-width:300px; margin-top:4px; }
+.nick-lbl { font-size:13px; color:#9be8cf; font-weight:700; text-align:left; padding-left:4px; }
+#nick-input {
+  width: 100%; padding: 14px 16px; border-radius: 14px; border: 2px solid var(--mint-deep);
+  background: rgba(255,255,255,0.06); color: #fff; font-size: 17px; font-weight: 700;
+  text-align: center; outline: none; -webkit-appearance: none;
+}
+#nick-input::placeholder { color: rgba(255,255,255,0.35); }
+#nick-input:focus { border-color: var(--mint); }
+
+.btn-go { background: var(--mint); color: #042620; border: none;
   padding: 16px 52px; font-weight: 900; font-size: 20px;
   border-radius: 50px; cursor: pointer; -webkit-appearance: none;
-  box-shadow: 0 5px 0 #9a7a00; margin-top: 4px; }
+  box-shadow: 0 5px 0 var(--mint-deep); margin-top: 4px; }
+.btn-go:disabled { opacity: 0.4; box-shadow: 0 5px 0 rgba(255,255,255,0.15); cursor: default; }
 
 #s-game {
   position: fixed;
@@ -67,22 +88,22 @@ body {
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  gap: 10px;
 }
-.hud-score { font-size: 20px; font-weight: 900; }
-.dots { display: flex; gap: 8px; }
-.dot { width: 22px; height: 22px; border-radius: 50%;
-  border: 2.5px solid rgba(255,255,255,0.4);
-  font-size: 11px; display: flex; align-items: center; justify-content: center; }
-.dot.goal { background: #f5c518; border-color: #f5c518; }
-.dot.miss { background: #e63946; border-color: #e63946; }
-.hud-kick { font-size: 13px; color: #a8dbb5; font-weight: 700; }
+.hud-nick { font-size: 13px; font-weight: 800; color: #9be8cf; max-width: 90px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hud-score { font-size: 20px; font-weight: 900; color: var(--mint); }
+.hud-timer { font-size: 20px; font-weight: 900; color: #fff;
+  background: rgba(46,230,176,0.15); border: 2px solid var(--mint);
+  padding: 3px 14px; border-radius: 20px; min-width: 64px; text-align:center; }
+.hud-timer.warn { color: #ff6b6b; border-color: #ff6b6b; background: rgba(255,107,107,0.15); }
 
 .field {
   flex: 1;
   position: relative;
   background: linear-gradient(to bottom,
     #4a9fd4 0%, #87ceeb 11%,
-    #2db54e 11%, #1e8c38 35%, #178030 100%);
+    #1ea877 11%, #138a5f 35%, #0c6e4b 100%);
   overflow: hidden;
   touch-action: none;   /* 드래그 슛 인터랙션 유지 */
   -webkit-tap-highlight-color: transparent;
@@ -168,20 +189,20 @@ body {
 #pw-bar { width:110px; height:9px; background:rgba(0,0,0,0.4); border-radius:5px;
   border:1.5px solid rgba(255,255,255,0.3); overflow:hidden; }
 #pw-fill { height:100%; width:0%; border-radius:5px;
-  background:linear-gradient(90deg,#44cc44,#f5c518,#e63946); }
+  background:linear-gradient(90deg,var(--mint),#f5e018,#e63946); }
 
 #msg { position:absolute; bottom:19%; left:50%; transform:translateX(-50%);
   font-size:16px; font-weight:900; color:#fff;
   text-shadow:1px 1px 4px #000; white-space:nowrap; pointer-events:none; z-index:6; }
 
 #flash { position:absolute; bottom:14%; left:50%; transform:translateX(-50%);
-  font-size:56px; font-weight:900;
+  font-size:50px; font-weight:900;
   pointer-events:none; opacity:0; z-index:20;
   text-shadow: 3px 3px 0 rgba(0,0,0,0.5);
   white-space: nowrap;
-  transition: opacity 0.2s; }
+  transition: opacity 0.15s; }
 
-.ground { height:50px; background:linear-gradient(#1e9438,#145722);
+.ground { height:50px; background:linear-gradient(#0e7a52,#0a4f35);
   position:relative; flex-shrink:0; }
 .ps { width:9px; height:9px; background:rgba(255,255,255,0.5); border-radius:50%;
   position:absolute; top:28%; left:50%; transform:translateX(-50%); }
@@ -194,19 +215,38 @@ body {
   display: none;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 18px;
+  justify-content: flex-start;
+  gap: 14px;
   text-align: center;
-  padding: 32px 24px;
+  padding: 28px 22px 36px;
+  overflow-y: auto;
   -webkit-tap-highlight-color: transparent;
+  background: radial-gradient(ellipse at 50% 30%, var(--mint-dim), var(--bg-dark) 75%);
 }
 #s-result.on { display: flex; }
-.ri { font-size:86px; }
-.rt { font-size:46px; font-weight:900; line-height:1.1; }
-.rs { font-size:48px; font-weight:900; color:#f5c518; text-shadow:2px 2px 0 #000; }
-.rsub { font-size:15px; color:#b5dfc0; line-height:1.8; }
+.ri { font-size:70px; }
+.rt { font-size:34px; font-weight:900; line-height:1.1; color: var(--mint); }
+.rs { font-size:42px; font-weight:900; color:#fff; text-shadow:2px 2px 0 #000; }
+.rsub { font-size:14px; color:#9be8cf; line-height:1.7; }
+
+.rank-box { width:100%; max-width:340px; background:rgba(255,255,255,0.05);
+  border:1.5px solid rgba(46,230,176,0.3); border-radius:16px; padding:14px;
+  display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+.rank-title { font-size:13px; font-weight:800; color:var(--mint); margin-bottom:4px; letter-spacing:1px; }
+.rank-row { display:flex; align-items:center; gap:8px; font-size:14px; padding:5px 6px; border-radius:8px; }
+.rank-row.me { background:rgba(46,230,176,0.18); font-weight:900; }
+.rank-rank { width:26px; font-weight:900; color:#9be8cf; }
+.rank-name { flex:1; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rank-score { font-weight:900; color:var(--mint); }
+.rank-empty { font-size:13px; color:rgba(255,255,255,0.4); padding:8px 0; }
+.rank-myrow-sep { font-size:11px; color:rgba(255,255,255,0.3); text-align:center; }
+
+.btn-row { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:4px; }
 .btn2 { background:transparent; color:#fff; border:2px solid rgba(255,255,255,0.4);
-  padding:13px 38px; border-radius:50px; font-size:16px; font-weight:700;
+  padding:13px 30px; border-radius:50px; font-size:15px; font-weight:700;
+  cursor:pointer; -webkit-appearance:none; }
+.btn-mint { background: var(--mint); color:#042620; border:2px solid var(--mint);
+  padding:13px 30px; border-radius:50px; font-size:15px; font-weight:800;
   cursor:pointer; -webkit-appearance:none; }
 
 #cwrap { position:fixed; top:0; left:0; right:0; bottom:0; pointer-events:none; z-index:999; overflow:hidden; }
@@ -218,21 +258,23 @@ body {
 
 <div id="s-intro" class="on">
   <div class="big-ball">⚽</div>
-  <div class="t1">승부차기<br>미니게임</div>
-  <div class="badge">3번 중 2번 성공 = WIN 🏆</div>
+  <div class="t1">골든볼 미니게임</div>
+  <div class="t2">수상할정도로 축구에<br>진심인 소가 있다?!</div>
+  <div class="t2"><b>무자비하게 다 막아버리는</b><br><b>바우키퍼</b>를 뚫어보세요 ⚽</div>
+  <div class="badge">30초 동안 최대한 많이 골인!</div>
   <div class="sub">공을 드래그해서<br>방향과 세기를 정하세요</div>
-  <button class="btn-go" onclick="startGame()">게임 시작</button>
+  <div class="nick-wrap">
+    <div class="nick-lbl">닉네임</div>
+    <input id="nick-input" type="text" maxlength="10" placeholder="랭킹에 표시될 닉네임" />
+  </div>
+  <button class="btn-go" id="btn-start" onclick="startGame()" disabled>게임 시작</button>
 </div>
 
 <div id="s-game">
   <div class="hud">
+    <div class="hud-nick" id="hud-nick"></div>
+    <div class="hud-timer" id="hud-timer">30</div>
     <div class="hud-score">⚽ <span id="sv">0</span></div>
-    <div class="dots">
-      <div class="dot" id="d0"></div>
-      <div class="dot" id="d1"></div>
-      <div class="dot" id="d2"></div>
-    </div>
-    <div class="hud-kick"><span id="kn">1</span>/3</div>
   </div>
   <div class="field" id="field">
     <div id="goal-wrap">
@@ -268,19 +310,102 @@ body {
 <div id="s-result"></div>
 <div id="cwrap"></div>
 
+<!-- file:// 로 직접 열어도 동작하도록 ES 모듈 대신 compat(전역 스크립트) SDK 사용 -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
-var kicks=0, goals=0, busy=false, phase='idle';
-var dragOn=false, dSX=0, dSY=0, dCX=0, dCY=0, rafId=null;
+// ──────────────────────────────────────────────────────────────
+// Firebase 설정 — Firebase 콘솔 > 프로젝트 설정 > 내 앱에서 복사한
+// firebaseConfig 값을 아래에 그대로 붙여넣으세요.
+// ──────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyA38Pg6HTpmrMwvlwTUWfSl5phVnT0iU5w",
+  authDomain: "bawoo-keeper-ranking.firebaseapp.com",
+  projectId: "bawoo-keeper-ranking",
+  storageBucket: "bawoo-keeper-ranking.firebasestorage.app",
+  messagingSenderId: "995053711496",
+  appId: "1:995053711496:web:14af9dbbee39178764af3d",
+  measurementId: "G-SWMYPFS7C1"
+};
 
-var ballEl   = document.getElementById('ball');
-var keeperEl = document.getElementById('keeper');
-var flashEl  = document.getElementById('flash');
-var msgEl    = document.getElementById('msg');
-var pwEl     = document.getElementById('pw');
-var pwFill   = document.getElementById('pw-fill');
-var acvs     = document.getElementById('acvs');
-var actx     = acvs.getContext('2d');
-var fieldEl  = document.getElementById('field');
+var db = null;
+function initFirebase() {
+  if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+    console.warn("[랭킹] firebaseConfig가 설정되지 않아 랭킹 기능이 비활성화됩니다.");
+    return;
+  }
+  try {
+    var app = firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+  } catch (err) {
+    console.error("[랭킹] Firebase 초기화 실패", err);
+  }
+}
+initFirebase();
+
+async function submitScore(nickname, score) {
+  if (!db) return;
+  try {
+    await db.collection("scores").add({
+      nickname: nickname,
+      score: score,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (err) {
+    console.error("[랭킹] 점수 저장 실패", err);
+  }
+}
+
+async function fetchTopScores(n) {
+  if (!db) return [];
+  try {
+    var snap = await db.collection("scores").orderBy("score", "desc").limit(n).get();
+    return snap.docs.map(function(d){ return d.data(); });
+  } catch (err) {
+    console.error("[랭킹] 상위 점수 조회 실패", err);
+    return [];
+  }
+}
+
+async function fetchMyRank(score) {
+  if (!db) return null;
+  try {
+    var snap = await db.collection("scores").where("score", ">", score).get();
+    return snap.size + 1;
+  } catch (err) {
+    console.error("[랭킹] 내 등수 조회 실패", err);
+    return null;
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// 게임 로직
+// ──────────────────────────────────────────────────────────────
+var GAME_SECONDS = 30;
+var nickname = '';
+var goals = 0, kicksTotal = 0, busy = false, phase = 'idle';
+var dragOn = false, dSX = 0, dSY = 0, dCX = 0, dCY = 0, rafId = null;
+var timeLeft = GAME_SECONDS, timerInt = null, gameOver = false;
+
+var ballEl    = document.getElementById('ball');
+var keeperEl  = document.getElementById('keeper');
+var flashEl   = document.getElementById('flash');
+var msgEl     = document.getElementById('msg');
+var pwEl      = document.getElementById('pw');
+var pwFill    = document.getElementById('pw-fill');
+var acvs      = document.getElementById('acvs');
+var actx      = acvs.getContext('2d');
+var fieldEl   = document.getElementById('field');
+var nickInput = document.getElementById('nick-input');
+var btnStart  = document.getElementById('btn-start');
+var timerEl   = document.getElementById('hud-timer');
+
+nickInput.addEventListener('input', function(){
+  btnStart.disabled = nickInput.value.trim().length === 0;
+});
+nickInput.addEventListener('keydown', function(e){
+  if (e.key === 'Enter' && !btnStart.disabled) startGame();
+});
 
 function resizeCvs() {
   acvs.width  = fieldEl.offsetWidth;
@@ -288,21 +413,49 @@ function resizeCvs() {
 }
 
 function startGame() {
-  kicks=0; goals=0; busy=false; phase='idle';
-  ['d0','d1','d2'].forEach(function(id){
-    var d=document.getElementById(id);
-    d.className='dot'; d.textContent='';
-  });
+  if (nickInput.value.trim().length === 0) return;
+  nickname = nickInput.value.trim().slice(0, 10);
+  goals = 0; kicksTotal = 0; busy = false; phase = 'idle'; gameOver = false;
+  timeLeft = GAME_SECONDS;
+
+  document.getElementById('hud-nick').textContent = nickname;
   document.getElementById('s-intro').classList.remove('on');
   document.getElementById('s-result').classList.remove('on');
   document.getElementById('s-game').classList.add('on');
-  setTimeout(function(){ resizeCvs(); resetKick(); }, 80);
+  updateTimerUI();
+
+  setTimeout(function(){ resizeCvs(); resetKick(); startTimer(); }, 80);
+}
+
+function startTimer() {
+  if (timerInt) clearInterval(timerInt);
+  timerInt = setInterval(function(){
+    timeLeft--;
+    updateTimerUI();
+    if (timeLeft <= 0) {
+      clearInterval(timerInt);
+      timerInt = null;
+      endGame();
+    }
+  }, 1000);
+}
+
+function updateTimerUI() {
+  timerEl.textContent = Math.max(0, timeLeft);
+  timerEl.classList.toggle('warn', timeLeft <= 10);
+}
+
+function endGame() {
+  gameOver = true;
+  // 진행 중인 슛이 끝난 뒤 결과로 넘어가도록 busy 여부 체크
+  if (!busy) showResult();
 }
 
 function resetKick() {
-  phase='idle'; busy=false; dragOn=false;
-  if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
-  actx.clearRect(0,0,acvs.width,acvs.height);
+  if (gameOver) { showResult(); return; }
+  phase = 'idle'; busy = false; dragOn = false;
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  actx.clearRect(0, 0, acvs.width, acvs.height);
 
   ballEl.style.cssText =
     'position:absolute;bottom:6%;left:50%;transform:translateX(-50%);' +
@@ -311,7 +464,7 @@ function resetKick() {
     '-webkit-tap-highlight-color:transparent;';
 
   keeperEl.className = '';
-  keeperEl.style.cssText = '';   // 인라인 스타일 초기화 → CSS 기본값(50% 센터) 복원
+  keeperEl.style.cssText = '';
   keeperEl.style.animation = 'sway 2s ease-in-out infinite';
   showKeeperImg('img-center');
 
@@ -322,7 +475,6 @@ function resetKick() {
   flashEl.textContent = '';
 
   document.getElementById('sv').textContent = goals;
-  document.getElementById('kn').textContent = kicks + 1;
 }
 
 // Pointer Events API — mouse/touch/pen 통합, iOS Safari에서 가장 안정적
@@ -343,8 +495,8 @@ function getBallCenter() {
 
 function onDown(e) {
   e.preventDefault();
-  if (busy || phase !== 'idle') return;
-  if (e.pointerId !== undefined) fieldEl.setPointerCapture(e.pointerId); // 드래그 중 이벤트 유지
+  if (busy || phase !== 'idle' || gameOver) return;
+  if (e.pointerId !== undefined) fieldEl.setPointerCapture(e.pointerId);
   var bc = getBallCenter();
   var p  = getPos(e);
   dragOn=true; dSX=bc.x; dSY=bc.y; dCX=p.x; dCY=p.y;
@@ -386,13 +538,13 @@ function drawArrow() {
   var ex=dSX+Math.cos(ang)*cap*.85, ey=dSY+Math.sin(ang)*cap*.85;
   actx.save();
   actx.setLineDash([7,5]);
-  actx.strokeStyle='rgba(245,197,24,'+(0.45+pwr*.5)+')';
+  actx.strokeStyle='rgba(46,230,176,'+(0.45+pwr*.5)+')';
   actx.lineWidth=2.5;
   actx.beginPath(); actx.moveTo(dSX,dSY); actx.lineTo(ex,ey); actx.stroke();
   actx.setLineDash([]);
   actx.save(); actx.translate(ex,ey); actx.rotate(ang);
   actx.beginPath(); actx.moveTo(11,0); actx.lineTo(-6,6); actx.lineTo(-6,-6); actx.closePath();
-  actx.fillStyle='rgba(245,197,24,'+(0.55+pwr*.45)+')';
+  actx.fillStyle='rgba(46,230,176,'+(0.55+pwr*.45)+')';
   actx.fill(); actx.restore(); actx.restore();
 }
 
@@ -405,14 +557,11 @@ function fireShot(dx, dy, dist) {
   var gL = gr.left-fr.left, gT = gr.top-fr.top, gW = gr.width, gH = gr.height;
   var fW = fr.width, fH = fr.height;
 
-  // ── 1. 화살표 방향으로 공 목표 지점 계산 ──────────────────────
-  // 골대 안쪽 목표 Y (크로스바에서 30% 아래)
+  // 빠른 템포: 고파워 0.12s, 저파워 0.34s
   var tY = gT + gH * 0.30;
-  var dur = (0.18 + (1-pwr)*0.34).toFixed(2); // 고파워: 0.18s(빠름), 저파워: 0.52s(느림)
+  var dur = (0.12 + (1-pwr)*0.22).toFixed(2);
 
-  // 공이 골 방향(위)으로 가지 않으면 → 즉시 노 골
   if (ndy >= -0.08) {
-    // 아래 또는 옆 방향: 그 방향으로 날아가다 사라짐
     var oX = dSX + ndx * fW * 0.4;
     var oY = dSY + ndy * fH * 0.4;
     ballEl.style.transition = 'left '+dur+'s ease-out,bottom '+dur+'s ease-out,opacity '+dur+'s,transform '+dur+'s';
@@ -422,19 +571,16 @@ function fireShot(dx, dy, dist) {
       ballEl.style.opacity   = '0';
       ballEl.style.transform = 'translateX(-50%) scale(0.7)';
     });
-    setTimeout(function(){ kickResult(false); }, dur*1000+80);
+    setTimeout(function(){ kickResult(false); }, dur*1000+50);
     return;
   }
 
-  // ── 2. 실제 목표 X 계산 (클램핑 없이 실제 방향) ──────────────
   var t  = (tY - dSY) / ndy;
   var tX = dSX + ndx * t;
 
-  // ── 3. 골대 범위 이탈 체크 → 노 골 ──────────────────────────
-  var postL = gL + gW*0.05;   // 왼쪽 포스트 안쪽
-  var postR = gL + gW*0.95;   // 오른쪽 포스트 안쪽
+  var postL = gL + gW*0.05;
+  var postR = gL + gW*0.95;
   if (tX < postL || tX > postR) {
-    // 옆으로 빠짐: 공은 그 방향으로 날아감
     var endL2 = (tX/fW*100)+'%';
     var endB2 = ((fH-tY-20)/fH*100)+'%';
     ballEl.style.transition = 'left '+dur+'s cubic-bezier(.2,.8,.3,1),bottom '+dur+'s cubic-bezier(.2,.8,.3,1),transform '+dur+'s,opacity '+dur+'s';
@@ -444,30 +590,24 @@ function fireShot(dx, dy, dist) {
       ballEl.style.transform = 'translateX(-50%) scale(0.5)';
       ballEl.style.opacity   = '0.2';
     });
-    setTimeout(function(){ kickResult(false); }, dur*1000+80);
+    setTimeout(function(){ kickResult(false); }, dur*1000+50);
     return;
   }
 
-  // ── 4. 골대 안쪽: AI 판정 & 키퍼 이동 ───────────────────────
-  var rel  = (tX - gL) / gW;   // 0~1, 골대 내 상대 위치
-  var side = rel - 0.5;         // 음수=왼쪽, 양수=오른쪽
+  var rel  = (tX - gL) / gW;
+  var side = rel - 0.5;
   var kd   = keeperAI(side, pwr);
   var isGoal = checkGoal(rel, kd, pwr);
 
-  // 키퍼 이동할 위치
-  // 세이브: 키퍼 센터 = 공 위치
-  // 노세이브: 키퍼 반대쪽으로
   var keeperTargetRel = isGoal
     ? (kd==='left' ? 0.14 : kd==='right' ? 0.86 : 0.50)
     : rel;
 
-  // 이미지 방향은 공이 간 위치 기준 (세이브) / AI방향 기준 (골)
   var imgDir = isGoal ? kd
     : (rel < 0.35 ? 'left' : rel > 0.65 ? 'right' : 'center');
 
-  setTimeout(function(){ moveKeeperTo(imgDir, keeperTargetRel); }, 110);
+  setTimeout(function(){ moveKeeperTo(imgDir, keeperTargetRel); }, 70);
 
-  // ── 5. 공 애니메이션 ──────────────────────────────────────────
   var endL = (tX/fW*100)+'%';
   var endB = ((fH-tY-20)/fH*100)+'%';
   ballEl.style.transition = 'left '+dur+'s cubic-bezier(.2,.8,.3,1),bottom '+dur+'s cubic-bezier(.2,.8,.3,1),transform '+dur+'s,opacity '+dur+'s';
@@ -477,16 +617,16 @@ function fireShot(dx, dy, dist) {
     ballEl.style.transform = 'translateX(-50%) scale('+(0.45+pwr*0.15)+')';
     if (!isGoal) ballEl.style.opacity = '0.4';
   });
-  setTimeout(function(){ kickResult(isGoal); }, dur*1000+80);
+  setTimeout(function(){ kickResult(isGoal); }, dur*1000+50);
 }
 
 // AI: 파워 낮을수록 키퍼가 방향을 정확히 읽음 (반응시간 충분)
 // 파워 높을수록 키퍼가 찍기에 가까워짐 (공이 너무 빠름)
+// 전체 평균 세이브율 약 75%가 되도록 보정된 수치 (시뮬레이션 기반)
 function keeperAI(side, pwr) {
   var r = Math.random();
   var ok = Math.abs(side) < 0.18 ? 'center' : (side < 0 ? 'left' : 'right');
-  // 저파워(0): 85% 정확, 고파워(1): 20% 정확
-  var correctChance = 0.85 - pwr * 0.65;
+  var correctChance = 0.93 - pwr * 0.48;
   if (r < correctChance) return ok;
   var wrongs = ['left','center','right'].filter(function(d){ return d !== ok; });
   return wrongs[Math.floor(Math.random() * 2)];
@@ -494,7 +634,7 @@ function keeperAI(side, pwr) {
 
 // 골 판정: 저파워일수록 키퍼 세이브 범위가 넓어짐
 function checkGoal(rel, kd, pwr) {
-  var m = 0.28 + (1 - pwr) * 0.20;  // 고파워: 0.28, 저파워: 0.48
+  var m = 0.37 + (1 - pwr) * 0.20;
   if (kd === 'left'   && rel < m)            return false;
   if (kd === 'right'  && rel > 1 - m)        return false;
   if (kd === 'center' && rel >= 0.5-m*0.55 && rel <= 0.5+m*0.55) return false;
@@ -507,12 +647,11 @@ function showKeeperImg(id) {
   });
 }
 
-// 키퍼를 rel 위치(0~1)로 이동, 이미지 전환
 function moveKeeperTo(d, rel) {
   keeperEl.style.animation = 'none';
   keeperEl.className = d==='left'?'dl':d==='right'?'dr':'dc';
 
-  var kw = 22;  // 키퍼 너비(%), goal-inner 기준
+  var kw = 22;
   var leftPct = Math.max(0, Math.min(100-kw, rel*100 - kw/2));
   keeperEl.style.left      = leftPct+'%';
   keeperEl.style.transform = 'none';
@@ -522,23 +661,17 @@ function moveKeeperTo(d, rel) {
   showKeeperImg(d==='left'?'img-dive-l':d==='right'?'img-dive-r':'img-center');
 }
 
-// (구버전 호환용, resetKick에서 사용)
-function diveKeeper(d) { moveKeeperTo(d, d==='left'?0.15:d==='right'?0.85:0.50); }
-
 function kickResult(isGoal) {
   if(isGoal) goals++;
-  var d=document.getElementById('d'+kicks);
-  d.className='dot '+(isGoal?'goal':'miss');
-  d.textContent=isGoal?'⚽':'✕';
-  kicks++;
+  kicksTotal++;
 
   if (isGoal) {
     flashEl.textContent = '⚽ 골인!';
-    flashEl.style.color = '#f5c518';
-    flashEl.style.textShadow = '3px 3px 0 rgba(0,0,0,0.6), 0 0 20px rgba(245,197,24,0.5)';
+    flashEl.style.color = '#fff';
+    flashEl.style.textShadow = '3px 3px 0 rgba(0,0,0,0.6), 0 0 20px rgba(46,230,176,0.7)';
   } else {
     flashEl.textContent = '🧤 노 골';
-    flashEl.style.color = '#e63946';
+    flashEl.style.color = '#ff6b6b';
     flashEl.style.textShadow = '3px 3px 0 rgba(0,0,0,0.6)';
   }
   flashEl.style.opacity = '1';
@@ -546,28 +679,163 @@ function kickResult(isGoal) {
 
   setTimeout(function(){
     flashEl.style.opacity = '0';
-    if(kicks>=3) setTimeout(showResult, 400);
+    busy = false;
+    if (gameOver) { showResult(); }
     else resetKick();
-  }, 1100);
+  }, 480);
 }
 
-function showResult() {
-  var win=goals>=2;
-  var r=document.getElementById('s-result');
-  r.style.background=win
-    ?'radial-gradient(ellipse at 50% 40%,#1a5e2e,#0b180c 70%)'
-    :'radial-gradient(ellipse at 50% 40%,#4a0a0a,#0b180c 70%)';
-  r.innerHTML=win
-    ?'<div class="ri">🏆</div><div class="rt" style="color:#f5c518">성공!</div><div class="rs">'+goals+' / 3골</div><div class="rsub">완벽한 슈터! 🔥<br>동아리 최고의 스트라이커!</div><button class="btn2" onclick="startGame()">다시 도전</button>'
-    :'<div class="ri">😔</div><div class="rt" style="color:#e63946">아쉽다!</div><div class="rs">'+goals+' / 3골</div><div class="rsub">골키퍼가 막아냈어요…<br>다시 도전해보세요!</div><button class="btn2" onclick="startGame()">다시 도전</button>';
+async function showResult() {
+  if (timerInt) { clearInterval(timerInt); timerInt = null; }
+  var r = document.getElementById('s-result');
+  r.innerHTML =
+    '<div class="ri">🏆</div>' +
+    '<div class="rt">' + nickname + '님, 수고하셨어요!</div>' +
+    '<div class="rs">' + goals + '골</div>' +
+    '<div class="rsub">30초 동안 ' + kicksTotal + '번 슛 / ' + goals + '번 성공<br>바우키퍼를 뚫어낸 골든볼!</div>' +
+    '<div class="rank-box" id="rank-box"><div class="rank-title">🏆 전체 랭킹 TOP 10</div><div id="rank-list" class="rank-empty">불러오는 중...</div></div>' +
+    '<div class="btn-row">' +
+      '<button class="btn-mint" onclick="window.__startGame()">다시 도전</button>' +
+      '<button class="btn2" id="btn-save-card" disabled>랭킹 카드 저장</button>' +
+    '</div>';
   document.getElementById('s-game').classList.remove('on');
   r.classList.add('on');
-  if(win) confetti();
+  if (goals >= 2) confetti();
+
+  await submitScore(nickname, goals);
+  var topScoresCache = await fetchTopScores(10);
+  var myRankCache = await fetchMyRank(goals);
+  renderRankList(topScoresCache, myRankCache);
+
+  var saveBtn = document.getElementById('btn-save-card');
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.onclick = function(){ saveRankCard(myRankCache, topScoresCache); };
+  }
+}
+
+function renderRankList(top, myRank) {
+  var list = document.getElementById('rank-list');
+  if (!list) return;
+  if (!top || top.length === 0) {
+    list.className = 'rank-empty';
+    list.textContent = '랭킹 정보를 불러올 수 없어요';
+    return;
+  }
+  list.className = '';
+  var html = '';
+  var meInTop = false;
+  top.forEach(function(row, i){
+    var isMe = row.nickname === nickname && row.score === goals;
+    if (isMe) meInTop = true;
+    html += '<div class="rank-row' + (isMe?' me':'') + '">' +
+      '<div class="rank-rank">' + (i+1) + '</div>' +
+      '<div class="rank-name">' + escapeHtml(row.nickname) + '</div>' +
+      '<div class="rank-score">' + row.score + '골</div>' +
+      '</div>';
+  });
+  if (!meInTop && myRank) {
+    html += '<div class="rank-myrow-sep">⋯</div>';
+    html += '<div class="rank-row me">' +
+      '<div class="rank-rank">' + myRank + '</div>' +
+      '<div class="rank-name">' + escapeHtml(nickname) + '</div>' +
+      '<div class="rank-score">' + goals + '골</div>' +
+      '</div>';
+  }
+  list.innerHTML = html;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+  });
+}
+
+function saveRankCard(myRank, top) {
+  var W = 720, H = 1000;
+  var c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  var ctx = c.getContext('2d');
+
+  var g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#0c2f28');
+  g.addColorStop(1, '#071512');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#2EE6B0';
+  ctx.font = '900 40px sans-serif';
+  ctx.fillText('⚽ 골든볼 미니게임', W/2, 90);
+
+  ctx.fillStyle = '#9be8cf';
+  ctx.font = '700 20px sans-serif';
+  ctx.fillText('바우키퍼 챌린지 결과', W/2, 130);
+
+  ctx.fillStyle = '#fff';
+  ctx.font = '900 46px sans-serif';
+  ctx.fillText(nickname, W/2, 230);
+
+  ctx.fillStyle = '#2EE6B0';
+  ctx.font = '900 120px sans-serif';
+  ctx.fillText(goals + '골', W/2, 360);
+
+  if (myRank) {
+    ctx.fillStyle = '#fff';
+    ctx.font = '800 28px sans-serif';
+    ctx.fillText('전체 ' + myRank + '위', W/2, 410);
+  }
+
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillRect(60, 450, W-120, 2);
+
+  ctx.fillStyle = '#2EE6B0';
+  ctx.font = '900 24px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('TOP 10', 60, 500);
+
+  var startY = 545;
+  if (top && top.length) {
+    top.slice(0, 10).forEach(function(row, i){
+      var y = startY + i*42;
+      var isMe = row.nickname === nickname && row.score === goals;
+      ctx.fillStyle = isMe ? 'rgba(46,230,176,0.18)' : 'transparent';
+      if (isMe) ctx.fillRect(50, y-28, W-100, 38);
+      ctx.fillStyle = isMe ? '#2EE6B0' : '#fff';
+      ctx.font = (isMe ? '900' : '700') + ' 22px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText((i+1) + '.', 60, y);
+      ctx.fillText(row.nickname, 110, y);
+      ctx.textAlign = 'right';
+      ctx.fillText(row.score + '골', W-60, y);
+      ctx.textAlign = 'left';
+    });
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '600 18px sans-serif';
+    ctx.fillText('랭킹 정보 없음', 60, startY);
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = '600 14px sans-serif';
+  ctx.fillText(new Date().toLocaleDateString('ko-KR'), W/2, H-30);
+
+  c.toBlob(function(blob){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '골든볼_' + nickname + '_' + goals + '골.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+  });
 }
 
 function confetti() {
   var w=document.getElementById('cwrap'); w.innerHTML='';
-  var cols=['#f5c518','#22963a','#fff','#e63946','#4fc3f7'];
+  var cols=['#2EE6B0','#14B894','#fff','#f5e018','#4fc3f7'];
   for(var i=0;i<70;i++){
     var c=document.createElement('div'); c.className='c';
     c.style.cssText='left:'+Math.random()*100+'vw;width:'+(8+Math.random()*8)+'px;height:'+(10+Math.random()*10)+'px;background:'+cols[i%5]+';animation-duration:'+(1.5+Math.random()*2)+'s;animation-delay:'+(Math.random()*.8)+'s;';
@@ -579,6 +847,14 @@ function confetti() {
 window.addEventListener('resize', function(){
   if(document.getElementById('s-game').classList.contains('on')) resizeCvs();
 });
+
+window.startGame = startGame;
+window.__startGame = function(){
+  document.getElementById('s-result').classList.remove('on');
+  document.getElementById('s-intro').classList.add('on');
+  nickInput.value = nickname;
+  btnStart.disabled = false;
+};
 </script>
 </body>
 </html>
