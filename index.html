@@ -363,12 +363,24 @@ function initFirebase() {
 }
 initFirebase();
 
-async function submitScore(nickname, score) {
+// 동명이인 구분용 기기별 익명 ID (localStorage에 한 번 생성해 재사용)
+function getDeviceId() {
+  var key = 'bawoo_device_id';
+  var id = localStorage.getItem(key);
+  if (!id) {
+    id = (crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2)));
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
+async function submitScore(nickname, score, deviceId) {
   if (!db) return;
   try {
     await db.collection("scores").add({
       nickname: nickname,
       score: score,
+      deviceId: deviceId,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   } catch (err) {
@@ -405,6 +417,7 @@ var GAME_SECONDS = 20;
 var GOLDEN_CHANCE = 0.01;   // 골든볼 등장 확률
 var GOLDEN_POINTS = 5;      // 골든볼 골인 시 점수
 var nickname = '';
+var myDeviceId = getDeviceId();
 var goals = 0, totalScore = 0, kicksTotal = 0, busy = false, phase = 'idle';
 var dragOn = false, dSX = 0, dSY = 0, dCX = 0, dCY = 0, rafId = null;
 var timeLeft = GAME_SECONDS, timerInt = null, gameOver = false;
@@ -776,7 +789,7 @@ async function showResult() {
   r.classList.add('on');
   if (totalScore >= 5) confetti();
 
-  await submitScore(nickname, totalScore);
+  await submitScore(nickname, totalScore, myDeviceId);
   var topScoresCache = await fetchTopScores(10);
   var myRankCache = await fetchMyRank(totalScore);
   renderRankList(topScoresCache, myRankCache);
@@ -800,7 +813,7 @@ function renderRankList(top, myRank) {
   var html = '';
   var meInTop = false;
   top.forEach(function(row, i){
-    var isMe = row.nickname === nickname && row.score === totalScore;
+    var isMe = row.deviceId === myDeviceId;
     if (isMe) meInTop = true;
     html += '<div class="rank-row' + (isMe?' me':'') + '">' +
       '<div class="rank-rank">' + (i+1) + '</div>' +
@@ -872,7 +885,7 @@ function saveRankCard(myRank, top) {
   if (top && top.length) {
     top.slice(0, 10).forEach(function(row, i){
       var y = startY + i*42;
-      var isMe = row.nickname === nickname && row.score === totalScore;
+      var isMe = row.deviceId === myDeviceId;
       ctx.fillStyle = isMe ? 'rgba(46,230,176,0.18)' : 'transparent';
       if (isMe) ctx.fillRect(50, y-28, W-100, 38);
       ctx.fillStyle = isMe ? '#2EE6B0' : '#fff';
