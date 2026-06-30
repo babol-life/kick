@@ -190,9 +190,21 @@ body {
   line-height: 1;
   -webkit-tap-highlight-color: transparent;
 }
+/* 골든볼: 이모지 대신 CSS로 그린 금빛 축구공 (오각형 패턴 + 골드 그라데이션) */
+/* 골든볼: ⚽ 이모지의 형태(오각형 패턴)는 그대로 두고 색상 필터로 금색으로 물들임 */
 #ball.golden {
-  filter: drop-shadow(0 0 10px #ffd700) drop-shadow(0 0 18px #ffae00) drop-shadow(0 3px 4px rgba(0,0,0,0.5));
+  filter:
+    drop-shadow(0 0 10px #ffd700) drop-shadow(0 0 20px #ffae00) drop-shadow(0 0 30px #ffae00)
+    drop-shadow(0 3px 4px rgba(0,0,0,0.5));
   animation: golden-pulse 0.6s ease-in-out infinite;
+}
+/* 골든볼 등장 시 화면 테두리를 금색으로 강조 */
+.field.golden-active {
+  animation: field-golden-glow 0.8s ease-in-out infinite;
+}
+@keyframes field-golden-glow {
+  0%,100% { box-shadow: inset 0 0 22px 6px rgba(255,215,0,0.55); }
+  50%     { box-shadow: inset 0 0 38px 12px rgba(255,193,7,0.85); }
 }
 @keyframes golden-pulse {
   0%,100% { transform: translateX(-50%) scale(1); }
@@ -280,7 +292,7 @@ body {
   <div class="t1">골든볼 미니게임</div>
   <div class="t2">수상할정도로 축구에<br>진심인 소가 있다?!</div>
   <div class="t2"><b>무자비하게 다 막아버리는</b><br><b>바우키퍼</b>를 뚫어보세요 ⚽</div>
-  <div class="badge">30초 동안 최대한 많이 골인!</div>
+  <div class="badge">20초 동안 최대한 많이 골인!</div>
   <div class="sub">공을 드래그해서<br>방향과 세기를 정하세요</div>
   <div class="nick-wrap">
     <div class="nick-lbl">이름</div>
@@ -414,7 +426,7 @@ async function fetchMyRank(score) {
 // 게임 로직
 // ──────────────────────────────────────────────────────────────
 var GAME_SECONDS = 20;
-var GOLDEN_CHANCE = 0.01;   // 골든볼 등장 확률
+var GOLDEN_CHANCE = 0.02;   // 골든볼 등장 확률
 var GOLDEN_POINTS = 5;      // 골든볼 골인 시 점수
 var nickname = '';
 var myDeviceId = getDeviceId();
@@ -511,18 +523,20 @@ function resetKick() {
   ballEl.style.cssText =
     'position:absolute;bottom:6%;left:50%;transform:translateX(-50%);' +
     'font-size:42px;cursor:pointer;z-index:10;' +
-    'filter:drop-shadow(0 3px 4px rgba(0,0,0,.5));line-height:1;transition:none;opacity:1;' +
+    'line-height:1;transition:none;opacity:1;' +
     '-webkit-tap-highlight-color:transparent;';
 
   isGolden = Math.random() < GOLDEN_CHANCE;
   ballEl.classList.toggle('golden', isGolden);
+  ballEl.textContent = '⚽';
+  fieldEl.classList.toggle('golden-active', isGolden);
 
   keeperEl.className = '';
   keeperEl.style.cssText = '';
   keeperEl.style.animation = 'sway 2s ease-in-out infinite';
   showKeeperImg('img-center');
 
-  msgEl.textContent = '공을 드래그해서 슛!';
+  msgEl.textContent = isGolden ? '✨ 골든볼 등장! 지금 넣으면 +' + GOLDEN_POINTS + '점!' : '공을 드래그해서 슛!';
   pwEl.style.opacity = '0';
   pwFill.style.width = '0%';
   flashEl.style.opacity = '0';
@@ -676,11 +690,11 @@ function fireShot(dx, dy, dist) {
 
 // AI: 파워 낮을수록 키퍼가 방향을 정확히 읽음 (반응시간 충분)
 // 파워 높을수록 키퍼가 찍기에 가까워짐 (공이 너무 빠름)
-// 전체 평균 세이브율 약 75%가 되도록 보정된 수치 (시뮬레이션 기반)
+// 전체 평균 세이브율 약 62%가 되도록 보정된 수치 (시뮬레이션 기반)
 function keeperAI(side, pwr) {
   var r = Math.random();
   var ok = Math.abs(side) < 0.18 ? 'center' : (side < 0 ? 'left' : 'right');
-  var correctChance = 0.93 - pwr * 0.48;
+  var correctChance = 0.84 - pwr * 0.50;
   if (r < correctChance) return ok;
   var wrongs = ['left','center','right'].filter(function(d){ return d !== ok; });
   return wrongs[Math.floor(Math.random() * 2)];
@@ -688,7 +702,7 @@ function keeperAI(side, pwr) {
 
 // 골 판정: 저파워일수록 키퍼 세이브 범위가 넓어짐
 function checkGoal(rel, kd, pwr) {
-  var m = 0.37 + (1 - pwr) * 0.20;
+  var m = 0.30 + (1 - pwr) * 0.18;
   if (kd === 'left'   && rel < m)            return false;
   if (kd === 'right'  && rel > 1 - m)        return false;
   if (kd === 'center' && rel >= 0.5-m*0.55 && rel <= 0.5+m*0.55) return false;
@@ -774,6 +788,8 @@ function kickResult(isGoal) {
 
 async function showResult() {
   if (timerInt) { clearInterval(timerInt); timerInt = null; }
+  fieldEl.classList.remove('golden-active');
+  ballEl.classList.remove('golden');
   var r = document.getElementById('s-result');
   r.innerHTML =
     '<div class="ri">🏆</div>' +
