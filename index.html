@@ -163,6 +163,17 @@ body {
 }
 #img-center { display: block; }
 
+#keeper-fallback {
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  font-size: 80px;
+  line-height: 1;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+}
+
 /* 다이브 시 이미지 크기 동일 유지, 위치는 JS로 제어 */
 #keeper.dl, #keeper.dr { animation: none; }
 #keeper.dc { animation: none; }
@@ -178,6 +189,14 @@ body {
   filter: drop-shadow(0 3px 4px rgba(0,0,0,0.5));
   line-height: 1;
   -webkit-tap-highlight-color: transparent;
+}
+#ball.golden {
+  filter: drop-shadow(0 0 10px #ffd700) drop-shadow(0 0 18px #ffae00) drop-shadow(0 3px 4px rgba(0,0,0,0.5));
+  animation: golden-pulse 0.6s ease-in-out infinite;
+}
+@keyframes golden-pulse {
+  0%,100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.15); }
 }
 
 #acvs { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5; }
@@ -264,8 +283,8 @@ body {
   <div class="badge">30초 동안 최대한 많이 골인!</div>
   <div class="sub">공을 드래그해서<br>방향과 세기를 정하세요</div>
   <div class="nick-wrap">
-    <div class="nick-lbl">닉네임</div>
-    <input id="nick-input" type="text" maxlength="10" placeholder="랭킹에 표시될 닉네임" />
+    <div class="nick-lbl">이름</div>
+    <input id="nick-input" type="text" maxlength="10" placeholder="랭킹에 표시될 이름" />
   </div>
   <button class="btn-go" id="btn-start" onclick="startGame()" disabled>게임 시작</button>
 </div>
@@ -290,6 +309,7 @@ body {
             <img id="img-center"  src="keeper_center.png"  alt="keeper center"/>
             <img id="img-dive-l"  src="keeper_dive_l.png"  alt="keeper dive left"/>
             <img id="img-dive-r"  src="keeper_dive_r.png"  alt="keeper dive right"/>
+            <div id="keeper-fallback">🧤</div>
           </div>
 
         </div>
@@ -381,11 +401,14 @@ async function fetchMyRank(score) {
 // ──────────────────────────────────────────────────────────────
 // 게임 로직
 // ──────────────────────────────────────────────────────────────
-var GAME_SECONDS = 30;
+var GAME_SECONDS = 20;
+var GOLDEN_CHANCE = 0.01;   // 골든볼 등장 확률
+var GOLDEN_POINTS = 5;      // 골든볼 골인 시 점수
 var nickname = '';
-var goals = 0, kicksTotal = 0, busy = false, phase = 'idle';
+var goals = 0, totalScore = 0, kicksTotal = 0, busy = false, phase = 'idle';
 var dragOn = false, dSX = 0, dSY = 0, dCX = 0, dCY = 0, rafId = null;
 var timeLeft = GAME_SECONDS, timerInt = null, gameOver = false;
+var isGolden = false;
 
 var ballEl    = document.getElementById('ball');
 var keeperEl  = document.getElementById('keeper');
@@ -415,7 +438,7 @@ function resizeCvs() {
 function startGame() {
   if (nickInput.value.trim().length === 0) return;
   nickname = nickInput.value.trim().slice(0, 10);
-  goals = 0; kicksTotal = 0; busy = false; phase = 'idle'; gameOver = false;
+  goals = 0; totalScore = 0; kicksTotal = 0; busy = false; phase = 'idle'; gameOver = false;
   timeLeft = GAME_SECONDS;
 
   document.getElementById('hud-nick').textContent = nickname;
@@ -448,11 +471,26 @@ function updateTimerUI() {
 function endGame() {
   gameOver = true;
   // 진행 중인 슛이 끝난 뒤 결과로 넘어가도록 busy 여부 체크
-  if (!busy) showResult();
+  if (!busy) showTimeOutThenResult();
+}
+
+function showTimeOutThenResult() {
+  dragOn = false;
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  pwEl.style.opacity = '0'; pwFill.style.width = '0%';
+  msgEl.textContent = '';
+  flashEl.textContent = '⏰ TIME OUT!';
+  flashEl.style.color = '#fff';
+  flashEl.style.textShadow = '3px 3px 0 rgba(0,0,0,0.6), 0 0 24px rgba(46,230,176,0.8)';
+  flashEl.style.opacity = '1';
+  setTimeout(function(){
+    flashEl.style.opacity = '0';
+    setTimeout(showResult, 250);
+  }, 1200);
 }
 
 function resetKick() {
-  if (gameOver) { showResult(); return; }
+  if (gameOver) { showTimeOutThenResult(); return; }
   phase = 'idle'; busy = false; dragOn = false;
   if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
   actx.clearRect(0, 0, acvs.width, acvs.height);
@@ -462,6 +500,9 @@ function resetKick() {
     'font-size:42px;cursor:pointer;z-index:10;' +
     'filter:drop-shadow(0 3px 4px rgba(0,0,0,.5));line-height:1;transition:none;opacity:1;' +
     '-webkit-tap-highlight-color:transparent;';
+
+  isGolden = Math.random() < GOLDEN_CHANCE;
+  ballEl.classList.toggle('golden', isGolden);
 
   keeperEl.className = '';
   keeperEl.style.cssText = '';
@@ -474,7 +515,7 @@ function resetKick() {
   flashEl.style.opacity = '0';
   flashEl.textContent = '';
 
-  document.getElementById('sv').textContent = goals;
+  document.getElementById('sv').textContent = totalScore;
 }
 
 // Pointer Events API — mouse/touch/pen 통합, iOS Safari에서 가장 안정적
@@ -641,10 +682,36 @@ function checkGoal(rel, kd, pwr) {
   return true;
 }
 
-function showKeeperImg(id) {
-  ['img-center','img-dive-l','img-dive-r'].forEach(function(n){
-    document.getElementById(n).style.display = n===id ? 'block' : 'none';
+// 키퍼 이미지 로딩 실패 시 자동 재시도 후, 그래도 실패하면 이모지로 대체
+var KEEPER_IMG_IDS = ['img-center', 'img-dive-l', 'img-dive-r'];
+KEEPER_IMG_IDS.forEach(function(id){
+  var img = document.getElementById(id);
+  img.dataset.retries = '0';
+  img.addEventListener('error', function(){
+    var retries = parseInt(img.dataset.retries || '0', 10);
+    var baseSrc = img.src.split('?')[0];
+    if (retries < 2) {
+      img.dataset.retries = String(retries + 1);
+      setTimeout(function(){ img.src = baseSrc + '?r=' + Date.now(); }, 500);
+    } else {
+      img.classList.add('img-broken');
+      if (img.style.display !== 'none') showKeeperImg(id);
+    }
   });
+});
+// 게임 시작 전(인트로 화면)부터 미리 캐시에 로드해 두어 다이브 순간 끊김/누락 방지
+KEEPER_IMG_IDS.forEach(function(id){
+  var src = document.getElementById(id).getAttribute('src');
+  var pre = new Image();
+  pre.src = src;
+});
+
+function showKeeperImg(id) {
+  var broken = document.getElementById(id).classList.contains('img-broken');
+  KEEPER_IMG_IDS.forEach(function(n){
+    document.getElementById(n).style.display = (n===id && !broken) ? 'block' : 'none';
+  });
+  document.getElementById('keeper-fallback').style.display = broken ? 'flex' : 'none';
 }
 
 function moveKeeperTo(d, rel) {
@@ -662,11 +729,18 @@ function moveKeeperTo(d, rel) {
 }
 
 function kickResult(isGoal) {
-  if(isGoal) goals++;
+  if (isGoal) {
+    goals++;
+    totalScore += isGolden ? GOLDEN_POINTS : 1;
+  }
   kicksTotal++;
 
-  if (isGoal) {
-    flashEl.textContent = '⚽ 골인!';
+  if (isGoal && isGolden) {
+    flashEl.textContent = '✨ 골든볼! +' + GOLDEN_POINTS;
+    flashEl.style.color = '#ffd700';
+    flashEl.style.textShadow = '3px 3px 0 rgba(0,0,0,0.6), 0 0 24px rgba(255,215,0,0.9)';
+  } else if (isGoal) {
+    flashEl.textContent = '⚽ 골인! +1';
     flashEl.style.color = '#fff';
     flashEl.style.textShadow = '3px 3px 0 rgba(0,0,0,0.6), 0 0 20px rgba(46,230,176,0.7)';
   } else {
@@ -675,12 +749,12 @@ function kickResult(isGoal) {
     flashEl.style.textShadow = '3px 3px 0 rgba(0,0,0,0.6)';
   }
   flashEl.style.opacity = '1';
-  document.getElementById('sv').textContent = goals;
+  document.getElementById('sv').textContent = totalScore;
 
   setTimeout(function(){
     flashEl.style.opacity = '0';
     busy = false;
-    if (gameOver) { showResult(); }
+    if (gameOver) { showTimeOutThenResult(); }
     else resetKick();
   }, 480);
 }
@@ -691,8 +765,8 @@ async function showResult() {
   r.innerHTML =
     '<div class="ri">🏆</div>' +
     '<div class="rt">' + nickname + '님, 수고하셨어요!</div>' +
-    '<div class="rs">' + goals + '골</div>' +
-    '<div class="rsub">30초 동안 ' + kicksTotal + '번 슛 / ' + goals + '번 성공<br>바우키퍼를 뚫어낸 골든볼!</div>' +
+    '<div class="rs">' + totalScore + '점</div>' +
+    '<div class="rsub">' + GAME_SECONDS + '초 동안 ' + kicksTotal + '번 슛 / ' + goals + '번 성공<br>바우키퍼를 뚫어낸 골든볼!</div>' +
     '<div class="rank-box" id="rank-box"><div class="rank-title">🏆 전체 랭킹 TOP 10</div><div id="rank-list" class="rank-empty">불러오는 중...</div></div>' +
     '<div class="btn-row">' +
       '<button class="btn-mint" onclick="window.__startGame()">다시 도전</button>' +
@@ -700,11 +774,11 @@ async function showResult() {
     '</div>';
   document.getElementById('s-game').classList.remove('on');
   r.classList.add('on');
-  if (goals >= 2) confetti();
+  if (totalScore >= 5) confetti();
 
-  await submitScore(nickname, goals);
+  await submitScore(nickname, totalScore);
   var topScoresCache = await fetchTopScores(10);
-  var myRankCache = await fetchMyRank(goals);
+  var myRankCache = await fetchMyRank(totalScore);
   renderRankList(topScoresCache, myRankCache);
 
   var saveBtn = document.getElementById('btn-save-card');
@@ -726,12 +800,12 @@ function renderRankList(top, myRank) {
   var html = '';
   var meInTop = false;
   top.forEach(function(row, i){
-    var isMe = row.nickname === nickname && row.score === goals;
+    var isMe = row.nickname === nickname && row.score === totalScore;
     if (isMe) meInTop = true;
     html += '<div class="rank-row' + (isMe?' me':'') + '">' +
       '<div class="rank-rank">' + (i+1) + '</div>' +
       '<div class="rank-name">' + escapeHtml(row.nickname) + '</div>' +
-      '<div class="rank-score">' + row.score + '골</div>' +
+      '<div class="rank-score">' + row.score + '점</div>' +
       '</div>';
   });
   if (!meInTop && myRank) {
@@ -739,7 +813,7 @@ function renderRankList(top, myRank) {
     html += '<div class="rank-row me">' +
       '<div class="rank-rank">' + myRank + '</div>' +
       '<div class="rank-name">' + escapeHtml(nickname) + '</div>' +
-      '<div class="rank-score">' + goals + '골</div>' +
+      '<div class="rank-score">' + totalScore + '점</div>' +
       '</div>';
   }
   list.innerHTML = html;
@@ -778,7 +852,7 @@ function saveRankCard(myRank, top) {
 
   ctx.fillStyle = '#2EE6B0';
   ctx.font = '900 120px sans-serif';
-  ctx.fillText(goals + '골', W/2, 360);
+  ctx.fillText(totalScore + '점', W/2, 360);
 
   if (myRank) {
     ctx.fillStyle = '#fff';
@@ -798,7 +872,7 @@ function saveRankCard(myRank, top) {
   if (top && top.length) {
     top.slice(0, 10).forEach(function(row, i){
       var y = startY + i*42;
-      var isMe = row.nickname === nickname && row.score === goals;
+      var isMe = row.nickname === nickname && row.score === totalScore;
       ctx.fillStyle = isMe ? 'rgba(46,230,176,0.18)' : 'transparent';
       if (isMe) ctx.fillRect(50, y-28, W-100, 38);
       ctx.fillStyle = isMe ? '#2EE6B0' : '#fff';
@@ -807,7 +881,7 @@ function saveRankCard(myRank, top) {
       ctx.fillText((i+1) + '.', 60, y);
       ctx.fillText(row.nickname, 110, y);
       ctx.textAlign = 'right';
-      ctx.fillText(row.score + '골', W-60, y);
+      ctx.fillText(row.score + '점', W-60, y);
       ctx.textAlign = 'left';
     });
   } else {
@@ -825,7 +899,7 @@ function saveRankCard(myRank, top) {
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = '골든볼_' + nickname + '_' + goals + '골.png';
+    a.download = '골든볼_' + nickname + '_' + totalScore + '점.png';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
